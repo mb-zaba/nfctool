@@ -17,7 +17,6 @@ try:
 	sheet = workbook.add_sheet('Sheet_1')
 	row_num = 0
 	autre = 'o'
-<<<<<<< Updated upstream
 	# La boucle permet de rentrer plusieurs capteurs les uns après les autres
 	while autre == 'o':
 		# connexion à la carte NFC par le lecteur USB
@@ -59,7 +58,6 @@ try:
 
 except:
 	print("\nArrêt du programme.")
-=======
 	clés = []
 	try:
 		# La boucle permet de rentrer plusieurs capteurs les uns après les autres
@@ -163,4 +161,3 @@ if mode == 'e':
 	ecriture()
 else:
 	lecture()
->>>>>>> Stashed changes
