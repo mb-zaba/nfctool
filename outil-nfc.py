@@ -7,76 +7,73 @@ version: 0.3
 nfcpy : Permet de récupérer les informations des capteurs
 """
 
-import sys, nfc, os
+import sys, nfc, os, xlsxwriter
 
 # affiche l'aide
 def aide():
 	print('utilisation:\tpython3 lecteur_nfc.py mode nom_fichier\n')
 	print('mode:')
-	print('\t--lecture nom_fichier\t\tLit les données des capteurs et sort un fichier xls')
+	print('\t--lecture nom_fichier\t\tLit les données des capteurs et sort un fichier Excel')
 	print('\t--ecriture nom_fichier\t\tLit les données d\'un fichier CSV donné en argument\n\t\t\t\t\tet écrit les données dans un capteur')
 	print('\t--help,-h\t\t\tAffiche cette aide')
 	print('\nProgramme de lecture et d\'écriture pour capteur ERS Eye.')
 
 # fonction de lecture du capteur
 def lecture(nom_fichier):
-	# Ouverture du fichier CSV
-	if nom_fichier.endswith('.csv'):
-		fichier_csv = open(f'donnees_sorties\\{nom_fichier}', 'a')
-	else:
-		fichier_csv = open(f'donnees_sorties\\{nom_fichier}.csv', 'a')
-	num_capteur = 0
 	autre = 'o'
-	clés = []
-	try:
-		# La boucle permet de rentrer plusieurs capteurs les uns après les autres
-		while autre == 'o':
-			# contient les données attendues
-			donnees = {'DevEui':'', 'Ota':'', 'Ack':'', 'AppEui':'', 'AppKey':'', 'SplPer':'', 'TempPer':'',
-				'LightPer':'', 'PirPer':'', 'PirCfg':'', 'PirSens':'', 'EyePer':'', 'SendPer':'', 'VddPer':'',
-				'PerOvr':'', 'DrDef':'', 'DrMax':'', 'DrMin':'', 'Plan':'', 'Link':'', 'QSize':'', 'QOffset':'',
-				'QPurge':'', 'Port':'', 'Plans':'', 'Sensor':'', 'FW':''
-			}
+	num_capt = 0
+	donnees = {}
+
+	# La boucle permet de rentrer plusieurs capteurs les uns après les autres
+	while autre == 'o':
+		print('Placez un capteur sur le lecteur.\n')
+		# connexion à la carte NFC par le lecteur USB
+		clf = nfc.ContactlessFrontend('usb')
+
+		# récupération des données du capteur
+		tag = clf.connect(rdwr={'on-connect': lambda tag: False})
+		print(f'Capteur lu')
+		records = tag.ndef.records[0]
+		data = records.text.split('\n')
+
+		# écriture des données dans un dictionnaire
+		for i in range(0, len(data)-1):
+			info = data[i].split(':')
+			if info[0] not in donnees:
+				donnees[info[0]] = []
+				for j in range(num_capt):
+					donnees.get(info[0]).append('')
 			try:
-				# connexion à la carte NFC par le lecteur USB
-				clf = nfc.ContactlessFrontend('usb')
+				donnees.get(info[0]).append(int(info[1]))
+			except:
+				donnees.get(info[0]).append(info[1])
+		$print(donnees)
 
-				# récupération des données du capteur et mise en forme en dictionnaire
-				tag = clf.connect(rdwr={'on-connect': lambda tag: False})
-				assert tag.ndef is not None
-				records = tag.ndef.records[0]
-				data = records.text.split('\n')
-				for i in range(0, len(data)-1):
-					info = data[i].split(':')
-					donnees[info[0]] = info[1]
-				print('Capteur lu')
+		clf.close()
+		num_capt += 1
+		autre = str(input('Un autre capteur? (o/n)'))
+		
 
+	# écriture dans le fichier Excel
+	# Ouverture du fichier Excel
+	workbook = xlsxwriter.Workbook(f'{nom_fichier}.xlsx')
+	worksheet = workbook.add_worksheet()
+	gras = workbook.add_format({'bold': True})
+	template = ('Action (create / update) *',
+		'Nom du capteur *',
+		'Profil de capteur (code) *',
+		'Groupe (code)',
+		'AppEUI (bigendian) * (update non pris en compte)',
+		'DevEUI (bigendian) * (Identifiant du capteur - update impossible)',
+		'AppKey * (update non pris en compte)',
+		'Equipement associé',
+		'Latitude',
+		'Longitude',
+		'Actif (oui/non)'
+		)
+	
 
-				# démarrage de l'écriture dans les fichiers excel et csv
-				# écriture des titres des colonnes
-				if num_capteur == 0:
-					for clé in donnees:
-						clés.append(clé)
-					fichier_csv.write(f"{';'.join(donnees)}\n")
-
-				for clé in donnees:
-					if clé not in clés:
-						fichier_csv.write(f"{';'.join()}")
-
-				# écriture des données
-				num_capteur += 1
-				fichier_csv.write(f"{';'.join(donnees.values())}\n")
-
-			except Exception as e:
-				print(f'Pas de capteur\n{e}')
-
-			finally:
-				clf.close()
-				autre = str(input('Un autre capteur? (o/n)'))
-
-	finally:
-		print(f"Fichier sauvegardé: donnees_sorties\\{nom_fichier}.csv")
-		fichier_csv.close()
+	print(f"Fichier sauvegardé: donnees_sorties\\{nom_fichier}.xlsx")
 
 # fonction d'écriture du capteur
 def ecriture(filename):
@@ -97,13 +94,10 @@ if __name__ == '__main__':
 	if len(sys.argv) < 3:
 		aide()
 	else:
-		try:
-			if sys.argv[1] not in ('--ecriture', '--lecture'):
-				aide()
-			else:
-				if sys.argv[1] == '--ecriture':
-					ecriture(sys.argv[2])
-				elif sys.argv[1] == '--lecture':
-					lecture(sys.argv[2])
-		except:
+		if sys.argv[1] not in ('--ecriture', '--lecture'):
 			aide()
+		else:
+			if sys.argv[1] == '--ecriture':
+				ecriture(sys.argv[2])
+			elif sys.argv[1] == '--lecture':
+				lecture(sys.argv[2])
