@@ -1,96 +1,41 @@
 """
 --- Script de récupération des données des capteurs via le NFC Reader
 
-version: 0.2.1
+version: 0.3
 
 --- Librairies utilisée:
-pyscard : Fait la liaison avec le lecteur NFC
 nfcpy : Permet de récupérer les informations des capteurs
-xlwt : Permet d'écrire un fichier Excel
 """
 
-import sys, nfc, xlwt, os
+import sys, nfc, os
 
-# tant que le programme continue, c'est qu'il y a une carte sur le lecteur lorsque l'on tape Entrée
-try:
-	workbook = xlwt.Workbook()
-	sheet = workbook.add_sheet('Sheet_1')
-	row_num = 0
+# affiche l'aide
+def aide():
+	print('utilisation:\tpython3 lecteur_nfc.py mode nom_fichier\n')
+	print('mode:')
+	print('\t--lecture nom_fichier\t\tLit les données des capteurs et sort un fichier xls')
+	print('\t--ecriture nom_fichier\t\tLit les données d\'un fichier CSV donné en argument\n\t\t\t\t\tet écrit les données dans un capteur')
+	print('\t--help,-h\t\t\tAffiche cette aide')
+	print('\nProgramme de lecture et d\'écriture pour capteur ERS Eye.')
+
+# fonction de lecture du capteur
+def lecture(nom_fichier):
+	# Ouverture du fichier CSV
+	if nom_fichier.endswith('.csv'):
+		fichier_csv = open(f'donnees_sorties\\{nom_fichier}', 'a')
+	else:
+		fichier_csv = open(f'donnees_sorties\\{nom_fichier}.csv', 'a')
+	num_capteur = 0
 	autre = 'o'
-	# La boucle permet de rentrer plusieurs capteurs les uns après les autres
-	while autre == 'o':
-		# connexion à la carte NFC par le lecteur USB
-		clf = nfc.ContactlessFrontend('usb')
-
-		# récupération des données du capteur et mise en forme en dictionnaire
-		tag = clf.connect(rdwr={'on-connect': lambda tag: False})
-		assert tag.ndef is not None
-		records = str(tag.ndef.records[0]).split('\'')
-		data = records[3].split('\n')
-		print(len(data))
-		infos = {}
-		for i in range(0, len(data)-1):
-			info = data[i].split(':')
-			infos[info[0]] = info[1]
-		print(infos)
-		# démarrage de l'écriture dans un fichier Excel
-		# écriture des titres des colonnes
-		if row_num == 0:
-			row = sheet.row(row_num)
-			col_num = 1
-			for clé in infos:
-				row.write(col_num, clé)
-				col_num += 1
-			row_num +=1
-
-		# écriture des données
-		row = sheet.row(row_num)
-		row.write(0, f'Capteur {row_num}')
-		col_num = 1
-		for valeur in infos.values():
-			row.write(col_num, valeur)
-			col_num += 1
-
-		row_num += 1
-		clf.close()
-		workbook.save("donnees_capteurs.xls")
-		autre = str(input('Un autre capteur? (o/n)'))
-
-except:
-	print("\nArrêt du programme.")
 	clés = []
 	try:
 		# La boucle permet de rentrer plusieurs capteurs les uns après les autres
 		while autre == 'o':
-			# contient les données de bases attendues
-			donnees = {
-				'DevEui':'',
-				'Ota':'',
-				'Ack':'',
-				'AppEui':'',
-				'AppKey':'',
-				'SplPer':'',
-				'TempPer':'',
-				'LightPer':'',
-				'PirPer':'',
-				'PirCfg':'',
-				'PirSens':'',
-				'EyePer':'',
-				'SendPer':'',
-				'VddPer':'',
-				'PerOvr':'',
-				'DrDef':'',
-				'DrMax':'',
-				'DrMin':'',
-				'Plan':'',
-				'Link':'',
-				'QSize':'',
-				'QOffset':'',
-				'QPurge':'',
-				'Port':'',
-				'Plans':'',
-				'Sensor':'',
-				'FW':''
+			# contient les données attendues
+			donnees = {'DevEui':'', 'Ota':'', 'Ack':'', 'AppEui':'', 'AppKey':'', 'SplPer':'', 'TempPer':'',
+				'LightPer':'', 'PirPer':'', 'PirCfg':'', 'PirSens':'', 'EyePer':'', 'SendPer':'', 'VddPer':'',
+				'PerOvr':'', 'DrDef':'', 'DrMax':'', 'DrMin':'', 'Plan':'', 'Link':'', 'QSize':'', 'QOffset':'',
+				'QPurge':'', 'Port':'', 'Plans':'', 'Sensor':'', 'FW':''
 			}
 			try:
 				# connexion à la carte NFC par le lecteur USB
@@ -99,65 +44,66 @@ except:
 				# récupération des données du capteur et mise en forme en dictionnaire
 				tag = clf.connect(rdwr={'on-connect': lambda tag: False})
 				assert tag.ndef is not None
-				records = str(tag.ndef.records[0]).split('\'')
-				data = records[3].split('\n')
+				records = tag.ndef.records[0]
+				data = records.text.split('\n')
 				for i in range(0, len(data)-1):
 					info = data[i].split(':')
 					donnees[info[0]] = info[1]
 				print('Capteur lu')
-				# démarrage de l'écriture dans un fichier Excel
+
+
+				# démarrage de l'écriture dans les fichiers excel et csv
 				# écriture des titres des colonnes
-				if row_num == 0:
-					row = sheet.row(row_num)
-					col_num = 1
+				if num_capteur == 0:
 					for clé in donnees:
-						row.write(col_num, clé)
 						clés.append(clé)
-						col_num += 1
-					row_num += 1
+					fichier_csv.write(f"{';'.join(donnees)}\n")
 
 				for clé in donnees:
 					if clé not in clés:
-						sheet.write(0, col_num, clé)
-						col_num += 1
-	
+						fichier_csv.write(f"{';'.join()}")
 
 				# écriture des données
-				row = sheet.row(row_num)
-				row.write(0, f'Capteur {row_num}')
-				col_num = 1
-				for valeur in donnees.values():
-					row.write(col_num, valeur)
-					col_num += 1
-				row_num += 1
+				num_capteur += 1
+				fichier_csv.write(f"{';'.join(donnees.values())}\n")
 
-			except:
-				print(f'Pas de capteur\n{sys.exc_info()[0]}')
+			except Exception as e:
+				print(f'Pas de capteur\n{e}')
 
 			finally:
 				clf.close()
 				autre = str(input('Un autre capteur? (o/n)'))
 
 	finally:
-		nom_fichier = str(input('Nom du fichier Excel: '))
-		workbook.save(f"donnees sorties\\{nom_fichier}.xls")
+		print(f"Fichier sauvegardé: donnees_sorties\\{nom_fichier}.csv")
+		fichier_csv.close()
 
-def ecriture():
+# fonction d'écriture du capteur
+def ecriture(filename):
 	num_line = 1
-	filename = str(input('Nom complet du fichier: '))
-	file = open(filename, 'r')
-	for line in file:
-		if num_line == 1:
-			line.split(';')
-			print(line)
+	try:
+		# ouverture du fichier
+		file = open(filename, 'r')
+		for line in file:
+			if num_line == 1:
+				keys = line.split(';')
+				print(keys)
+			num_line += 1
+	except:
+		print('Erreur lors de l\'ouverture du fichier')
 
-
-print('Lecteur NFC.\nTapez "l" pour lire les données du capteur ou "e" pour écrire les données dans le capteur.')
-print('Le mode écriture lit les données d\'un fichier CSV, placez le dans le même dossier que l\'application.')
-mode = str(input('> '))
-while mode not in ('l', 'e'):
-	mode = str(input('> '))
-if mode == 'e':
-	ecriture()
-else:
-	lecture()
+# début du programme
+if __name__ == '__main__':
+	if len(sys.argv) < 3:
+		aide()
+	else:
+		try:
+			if sys.argv[1] not in ('--ecriture', '--lecture'):
+				aide()
+			else:
+				if sys.argv[1] == '--ecriture':
+					ecriture(sys.argv[2])
+				elif sys.argv[1] == '--lecture':
+					lecture(sys.argv[2])
+		except:
+			aide()
