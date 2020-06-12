@@ -1,11 +1,8 @@
 """
 --- Script de récupération des données des capteurs via le NFC Reader
 
-<<<<<<< Updated upstream
-=======
 version: 0.2.1
 
->>>>>>> Stashed changes
 --- Librairies utilisée:
 pyscard : Fait la liaison avec le lecteur NFC
 nfcpy : Permet de récupérer les informations des capteurs
