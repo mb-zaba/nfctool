@@ -1,163 +1,168 @@
 """
 --- Script de récupération des données des capteurs via le NFC Reader
 
-version: 0.2.1
+version: 0.3
 
 --- Librairies utilisée:
-pyscard : Fait la liaison avec le lecteur NFC
 nfcpy : Permet de récupérer les informations des capteurs
-xlwt : Permet d'écrire un fichier Excel
+xlsxwriter : Permet d'écrire des fichier xlsx pour Excel
 """
 
-import sys, nfc, xlwt, os
+import sys, nfc, os, xlsxwriter
 
-# tant que le programme continue, c'est qu'il y a une carte sur le lecteur lorsque l'on tape Entrée
-try:
-	workbook = xlwt.Workbook()
-	sheet = workbook.add_sheet('Sheet_1')
-	row_num = 0
+# affiche l'aide
+def aide():
+	print('utilisation:\tpython3 lecteur_nfc.py mode nom_fichier\n')
+	print('mode:')
+	print('\t--lecture nom_fichier\t\tLit les données des capteurs et sort un fichier Excel')
+	print('\t--ecriture nom_fichier\t\tLit les données d\'un fichier CSV donné en argument\n\t\t\t\t\tet écrit les données dans un capteur')
+	print('\t--help,-h\t\t\tAffiche cette aide')
+	print('\nProgramme de lecture et d\'écriture pour capteur ERS Eye.')
+
+# fonction de lecture du capteur
+def lecture(nom_fichier):
 	autre = 'o'
+	num_capt = 0
+	donnees = {}
+
 	# La boucle permet de rentrer plusieurs capteurs les uns après les autres
 	while autre == 'o':
+		print('Placez un capteur sur le lecteur.\n')
 		# connexion à la carte NFC par le lecteur USB
 		clf = nfc.ContactlessFrontend('usb')
 
-		# récupération des données du capteur et mise en forme en dictionnaire
+		# récupération des données du capteur
 		tag = clf.connect(rdwr={'on-connect': lambda tag: False})
-		assert tag.ndef is not None
-		records = str(tag.ndef.records[0]).split('\'')
-		data = records[3].split('\n')
-		print(len(data))
-		infos = {}
+		print(f'Capteur lu')
+		records = tag.ndef.records[0]
+		data = records.text.split('\n')
+
+		# rangement des données dans un dictionnaire
 		for i in range(0, len(data)-1):
 			info = data[i].split(':')
-			infos[info[0]] = info[1]
-		print(infos)
-		# démarrage de l'écriture dans un fichier Excel
-		# écriture des titres des colonnes
-		if row_num == 0:
-			row = sheet.row(row_num)
-			col_num = 1
-			for clé in infos:
-				row.write(col_num, clé)
-				col_num += 1
-			row_num +=1
+			if info[0] not in donnees:
+				donnees[info[0]] = []
+				for j in range(num_capt):
+					donnees.get(info[0]).append('')
 
-		# écriture des données
-		row = sheet.row(row_num)
-		row.write(0, f'Capteur {row_num}')
-		col_num = 1
-		for valeur in infos.values():
-			row.write(col_num, valeur)
-			col_num += 1
+			# Toutes les données étant récupérées en chaines de caractère,
+			# on transforme les nombres en 'int' pour éviter les warnings dans Excel
+			# Les valeurs de AppEui, AppKey et DevEui sont en hexadécimal, on évite donc de les transformer
+			if info[0] not in ['AppEui', 'AppKey', 'DevEui']:
+				try:
+					donnees.get(info[0]).append(int(info[1]))
+				except:
+					donnees.get(info[0]).append(info[1])
+			else:
+				donnees.get(info[0]).append(info[1])
+		print(donnees)
 
-		row_num += 1
 		clf.close()
-		workbook.save("donnees_capteurs.xls")
+		num_capt += 1
 		autre = str(input('Un autre capteur? (o/n)'))
+		
 
-except:
-	print("\nArrêt du programme.")
-	clés = []
-	try:
-		# La boucle permet de rentrer plusieurs capteurs les uns après les autres
-		while autre == 'o':
-			# contient les données de bases attendues
-			donnees = {
-				'DevEui':'',
-				'Ota':'',
-				'Ack':'',
-				'AppEui':'',
-				'AppKey':'',
-				'SplPer':'',
-				'TempPer':'',
-				'LightPer':'',
-				'PirPer':'',
-				'PirCfg':'',
-				'PirSens':'',
-				'EyePer':'',
-				'SendPer':'',
-				'VddPer':'',
-				'PerOvr':'',
-				'DrDef':'',
-				'DrMax':'',
-				'DrMin':'',
-				'Plan':'',
-				'Link':'',
-				'QSize':'',
-				'QOffset':'',
-				'QPurge':'',
-				'Port':'',
-				'Plans':'',
-				'Sensor':'',
-				'FW':''
-			}
-			try:
-				# connexion à la carte NFC par le lecteur USB
-				clf = nfc.ContactlessFrontend('usb')
+	# écriture dans le fichier Excel
+	# Ouverture du fichier Excel et de la feuille
+	workbook = xlsxwriter.Workbook(f'donnees_sorties\\{nom_fichier}.xlsx')
+	worksheet = workbook.add_worksheet()
 
-				# récupération des données du capteur et mise en forme en dictionnaire
-				tag = clf.connect(rdwr={'on-connect': lambda tag: False})
-				assert tag.ndef is not None
-				records = str(tag.ndef.records[0]).split('\'')
-				data = records[3].split('\n')
-				for i in range(0, len(data)-1):
-					info = data[i].split(':')
-					donnees[info[0]] = info[1]
-				print('Capteur lu')
-				# démarrage de l'écriture dans un fichier Excel
-				# écriture des titres des colonnes
-				if row_num == 0:
-					row = sheet.row(row_num)
-					col_num = 1
-					for clé in donnees:
-						row.write(col_num, clé)
-						clés.append(clé)
-						col_num += 1
-					row_num += 1
+	# écriture en gras des titres de colonnes
+	bold = workbook.add_format({'bold': True})
 
-				for clé in donnees:
-					if clé not in clés:
-						sheet.write(0, col_num, clé)
-						col_num += 1
-	
+	# titres de colonnes du template à respecter pour spot.objenious
+	template = ['Action (create / update) *',
+		'Nom du capteur *',
+		'Profil de capteur (code) *',
+		'Groupe (code)',
+		'AppEUI (bigendian) * (update non pris en compte)',
+		'DevEUI (bigendian) * (Identifiant du capteur - update impossible)',
+		'AppKey * (update non pris en compte)',
+		'Equipement associé',
+		'Latitude',
+		'Longitude',
+		'Actif (oui/non)'
+	]
 
-				# écriture des données
-				row = sheet.row(row_num)
-				row.write(0, f'Capteur {row_num}')
-				col_num = 1
-				for valeur in donnees.values():
-					row.write(col_num, valeur)
-					col_num += 1
-				row_num += 1
+	# cette partie écrit dans le fichier Excel les colonnes du template en fonction des données trouvées
+	# la variable x sert d'index dans le tableau et en y ajoutant 65 a le code Ascii des lettres majuscules
+	# la variable y est pour la ligne dans le tableau Excel
+	x = 0
+	for x in range(0, len(template)):
+		worksheet.write(f'{chr(x+65)}1', template[x], bold)
 
-			except:
-				print(f'Pas de capteur\n{sys.exc_info()[0]}')
+		if 'DevEUI' in template[x]:
+			deveuis = donnees.get("DevEui")
+			y = 2
+			for deveui in deveuis:
+				worksheet.write(f'{chr(x+65)}{y}', deveui)
+				y += 1
+		
+		elif 'AppEUI' in template[x]:
+			noms = donnees.get("AppEui")
+			y = 2
+			for nom in noms:
+				worksheet.write(f'{chr(x+65)}{y}', nom)
+				y += 1
 
-			finally:
-				clf.close()
-				autre = str(input('Un autre capteur? (o/n)'))
+		elif 'AppKey' in template[x]:
+			appkeys = donnees.get("AppKey")
+			y = 2
+			for appkey in appkeys:
+				worksheet.write(f'{chr(x+65)}{y}', appkey)
+				y += 1
 
-	finally:
-		nom_fichier = str(input('Nom du fichier Excel: '))
-		workbook.save(f"donnees sorties\\{nom_fichier}.xls")
+	# On commence à écrire le reste des données dans le fichier Excel, en évitant les données déjà écrites
+	x = 11
+	alpha = True
+	for field in donnees:
+		# Cette partie vérifie que le code ascii des colonnes (de 65 à 90, soit de A à Z)
+		# soit bien inférieur à 26 pour éviter les cellules qui n'éxistent pas
+		# et on recommence une boucle en commençant avec deux lettres
+		if alpha == True:
+			cell = f'{chr(x+65)}'
+		else:
+			cell = f'A{chr(x+65)}'
 
-def ecriture():
+		if field not in ['DevEui', 'AppEui', 'AppKey']:
+			y = 2
+			for data in donnees[field]:
+				worksheet.write(f'{cell}{y}', data)
+				y += 1
+			worksheet.write(f'{cell}1', field, bold)
+			x += 1
+		if x > 25:
+			alpha = False
+			x = 0
+			
+
+	# On ferme le fichier Excel
+	workbook.close()
+	print(f"Fichier sauvegardé: donnees_sorties\\{nom_fichier}.xlsx")
+
+# fonction d'écriture du capteur
+def ecriture(filename):
 	num_line = 1
-	filename = str(input('Nom complet du fichier: '))
-	file = open(filename, 'r')
-	for line in file:
-		if num_line == 1:
-			line.split(';')
-			print(line)
+	try:
+		# ouverture du fichier
+		file = open(filename, 'r')
+		for line in file:
+			if num_line == 1:
+				keys = line.split(';')
+				print(keys)
+			num_line += 1
+	except:
+		print('Erreur lors de l\'ouverture du fichier')
 
-
-print('Lecteur NFC.\nTapez "l" pour lire les données du capteur ou "e" pour écrire les données dans le capteur.')
-print('Le mode écriture lit les données d\'un fichier CSV, placez le dans le même dossier que l\'application.')
-mode = str(input('> '))
-while mode not in ('l', 'e'):
-	mode = str(input('> '))
-if mode == 'e':
-	ecriture()
-else:
-	lecture()
+# début du programme
+if __name__ == '__main__':
+	if len(sys.argv) < 3:
+		aide()
+	else:
+		if sys.argv[1] not in ('--ecriture', '--lecture'):
+			aide()
+		else:
+			if sys.argv[1] == '--ecriture':
+				ecriture(sys.argv[2])
+			elif sys.argv[1] == '--lecture':
+				lecture(sys.argv[2])
