@@ -14,4 +14,4 @@ Outil de lecture de capteur en NFC
 
 ## Librairies
 - [NFCpy](https://nfcpy.readthedocs.io/)
-- [xlsxwrite](https://xlsxwrite.readthedocs.io/)
+- [xlsxwriter](https://xlsxwriter.readthedocs.io/)
