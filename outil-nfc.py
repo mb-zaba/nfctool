@@ -6,12 +6,17 @@ version: 0.4.0
 --- Librairies utilisée:
 nfcpy : Permet de récupérer les informations des capteurs
 xlsxwriter : Permet d'écrire des fichier xlsx pour Excel
-
-Create/update
-pas les données
 """
 
-import sys, nfc, os, xlsxwriter, argparse
+
+
+
+
+import sys, nfc, os, xlsxwriter, argparse, ndef
+
+
+
+
 
 # une fonction pour détecter les arguments et les utiliser dans le programme
 def arg_parser():
@@ -34,15 +39,21 @@ def arg_parser():
 	# pour le mode ecriture
 	mode.add_argument("-e", "--ecrire", help="mode ecriture", action="store_true", dest="ecriture")
 
-	# définir le nom du fichier en sortie de la lecture
-	parser.add_argument("-s", "--sortie",
-		help="défini le nom du fichier en sortie, suffixes -spot et -donnees seront ajouté",
+	# définir le nom du fichier en sortie de la lecture ou en entrée de l'écriture
+	parser.add_argument("-f", "--fichier",
+		help="""défini le nom du fichier en sortie(mode lecture) ou en entrée(mode écriture),
+		suffixes -spot et -donnees seront ajouté en sortie.
+		Pour le fichier dans le mode écriture, placez le fichier dans le dossier entrees_csv\\""",
 		metavar='nom_fichier')
 
 	# affiche toutes les données du capteur récupérées par le programme
 	parser.add_argument("-v", "--verbose", help="affiche les données du capteur", action="store_true")
 
 	return(parser.parse_args())
+
+
+
+
 
 # fonction de lecture du capteur
 def lecture(nom_fichier, action, verbose):
@@ -121,11 +132,14 @@ def lecture(nom_fichier, action, verbose):
 		spot_sheet.write(f'{chr(x+65)}1', template[x], bold)
 
 		if 'DevEUI' in template[x]:
-			deveuis = donnees.get("DevEui")
-			y = 2
-			for deveui in deveuis:
-				spot_sheet.write(f'{chr(x+65)}{y}', deveui)
-				y += 1
+			try:
+				deveuis = donnees.get("DevEui")
+				y = 2
+				for deveui in deveuis:
+					spot_sheet.write(f'{chr(x+65)}{y}', deveui)
+					y += 1
+			except Exception as e:
+				print("Erreur: DevEui\n", e)
 		
 		elif 'AppEUI' in template[x]:
 			noms = donnees.get("AppEui")
@@ -180,27 +194,72 @@ def lecture(nom_fichier, action, verbose):
 	print(f"Fichier d'injection: donnees_sorties\\{nom_fichier}-spot.xlsx")
 	print(f"Fichier de données: donnees_sorties\\{nom_fichier}-donnees.xlsx")
 
+
+
+
+
 # fonction d'écriture du capteur
-def ecriture(filename):
-	num_line = 1
-	try:
-		# ouverture du fichier
-		file = open(filename, 'r')
-		for line in file:
-			if num_line == 1:
-				keys = line.split(';')
-				print(keys)
-			num_line += 1
-	except:
-		print('Erreur lors de l\'ouverture du fichier')
+def ecriture(filename, verbose):
+	autre = 'o'
+	num_capt = 0
+	ndef_messages = []
+	deveuis = []
+
+	# ouverture et lecture du fichier csv
+	if filename.endswith(".csv"):
+		file = open(f'entrees_csv\\{filename}')
+	else:
+		file = open(f'entrees_csv\\{filename}.csv')
+
+	# on récupère les titres des valeurs 
+	tab_file = []
+	line_num = 0
+	titres = file.readline().split(';')
+	for i in range(0, len(titres)):
+		titres[i] = titres[i].replace('\n', "")
+
+	# on récupère les données de configuration
+	for line in file:
+		settings = ''
+		line = line.split(';')
+		for j in range(0, len(line)):
+			line[j] = line[j].replace('\n', '')
+			settings += f'{titres[j]}:{line[j]}\n'
+			if titres[j] == 'DevEui':
+				deveuis.append(line[j])
+		ndef_messages.append(settings)
+		print(settings)
+	file.close()
+
+	for setting in ndef_messages:
+		if verbose:
+			print(setting)
+		record = ndef.TextRecord(setting)
+
+		print('\nPlacez le capteur sur le lecteur\nDevEui :', deveuis[num_capt])
+		# connexion à la carte NFC par le lecteur USB
+		clf = nfc.ContactlessFrontend('usb')
+
+		# récupération des données du capteur
+		tag = clf.connect(rdwr={'on-connect': lambda tag: False})
+
+		# écriture de la configuration dans le capteur
+		tag.ndef.records = [record]
+
+		clf.close()
+		num_capt += 1
+
+
 
 # début du programme
 if __name__ == '__main__':
 	args = arg_parser()
-	try:
-		action = args.create
-	except:
-		action = args.update
-	finally:
-		if args.lecture:
-			lecture(args.sortie, action, args.verbose)
+	if args.lecture:
+		try:
+			action = args.create
+		except:
+			action = args.update
+		finally:
+			lecture(args.fichier, action, args.verbose)
+	elif args.ecriture:
+		ecriture(args.fichier, args.verbose)
