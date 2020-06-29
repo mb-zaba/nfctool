@@ -29,4 +29,20 @@ Voici la liste des champs qu'il est possible d'écrire dans le capteur : https:/
 
 ## Librairies
 - [NFCpy](https://nfcpy.readthedocs.io/)
+<<<<<<< Updated upstream
 - [xlsxwrite](https://xlsxwrite.readthedocs.io/)
+=======
+- [xlsxwriter](https://xlsxwriter.readthedocs.io/)
+
+
+## Erreurs possibles
+Il est possible que des erreurs apparaissent.
+Voici comment résoudre certaines erreurs :
+
+### LIBUSB_ERROR_NOT_SUPPORTED
+Cette erreur apparaît lorsque le driver du lecteur NFC est mal configuré.
+Il faut alors utiliser le logiciel [Zadig](https://zadig.akeo.ie).
+1. Lancez l'exécutable et cliquez sur Options -> List all devices
+2. Ensuite, dans la liste, selectionnez ACS122U PICC Interface.
+3. Selectionnez le driver WinUSB et installez le.
+>>>>>>> Stashed changes
