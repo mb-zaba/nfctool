@@ -29,9 +29,7 @@ Voici la liste des champs qu'il est possible d'écrire dans le capteur : https:/
 
 ## Librairies
 - [NFCpy](https://nfcpy.readthedocs.io/)
-<<<<<<< Updated upstream
 - [xlsxwrite](https://xlsxwrite.readthedocs.io/)
-=======
 - [xlsxwriter](https://xlsxwriter.readthedocs.io/)
 
 
@@ -45,4 +43,3 @@ Il faut alors utiliser le logiciel [Zadig](https://zadig.akeo.ie).
 1. Lancez l'exécutable et cliquez sur Options -> List all devices
 2. Ensuite, dans la liste, selectionnez ACS122U PICC Interface.
 3. Selectionnez le driver WinUSB et installez le.
->>>>>>> Stashed changes
