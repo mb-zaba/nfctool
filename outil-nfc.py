@@ -6,15 +6,12 @@ version: 0.4.1
 --- Librairies utilisée:
 nfcpy : Permet de récupérer les informations des capteurs
 xlsxwriter : Permet d'écrire des fichier xlsx pour Excel
+ndef : Permet le formatage des données dans la norme NDEF
 """
 
 
 
-
-
 import sys, nfc, os, xlsxwriter, argparse, ndef
-
-
 
 
 
@@ -23,18 +20,10 @@ def arg_parser():
 	parser = argparse.ArgumentParser(description="Outil de lecture et d'écriture de capteur ERS Eye")
 
 	mode = parser.add_mutually_exclusive_group(required=True)
-	action = parser.add_mutually_exclusive_group()
 
 	# pour le mode lecture
 	mode.add_argument("-l", "--lire", help="mode lecture", action="store_true", dest="lecture")
 
-	# action lors de l'injection dans spot objenious
-	action.add_argument("-c", "--create",
-		help="création du capteur lors de l'injection dans spot objenious",
-		action="store_const", const="create")
-	action.add_argument("-u", "--update",
-		help="mise à jour du capteur lors de l'injection dans spot objenious",
-		action="store_const", const="update")
 
 	# pour le mode ecriture
 	mode.add_argument("-e", "--ecrire", help="mode ecriture", action="store_true", dest="ecriture")
@@ -53,7 +42,6 @@ def arg_parser():
 
 
 class outil_nfc:
-
 	# fonction pour formatter la configuration en dictionnaire
 	def conf_to_dict(data, donnees, num_capt):
 		for i in range(0, len(data)-1):
@@ -73,11 +61,11 @@ class outil_nfc:
 					donnees.get(info[0]).append(info[1])
 			else:
 				donnees.get(info[0]).append(info[1])
-		return(data, donnees)
+		return(donnees)
 
 
 	# fonction de lecture du capteur
-	def lecture(nom_fichier, action, verbose):
+	def lecture(nom_fichier, verbose):
 		nouv_capt = 'o'
 		num_capt = 0
 		donnees = {}
@@ -96,7 +84,7 @@ class outil_nfc:
 				print(records)
 			data = records.text.split('\n')
 
-			data, donnees = outil_nfc.conf_to_dict(data, donnees, num_capt)
+			donnees = outil_nfc.conf_to_dict(data, donnees, num_capt)
 
 			clf.close()
 			num_capt += 1
@@ -169,10 +157,6 @@ class outil_nfc:
 				for i in range(2, num_capt+2):
 					spot_sheet.write(f'{chr(x+65)}{i}', 'test_perverie')
 
-			elif 'Action' in template[x]:
-				for i in range(2, num_capt+2):
-					spot_sheet.write(f'{chr(x+65)}{i}', action)
-
 		# écriture du fichier de données
 		x = 0
 		alpha = True
@@ -200,14 +184,15 @@ class outil_nfc:
 		print(f'{num_capt} capteur(s) ajouté(s)')
 		print(f"Fichier d'injection: donnees_sorties\\{nom_fichier}-spot.xlsx")
 		print(f"Fichier de données: donnees_sorties\\{nom_fichier}-donnees.xlsx")
+		print('Certains champs du fichier d\'injection sont à remplir à la main.')
 
 
 	# fonction d'écriture du capteur
 	def ecriture(filename, verbose):
-		autre = 'o'
 		num_capt = 0
 		ndef_messages = []
 		deveuis = []
+		donnees = {}
 
 		# ouverture et lecture du fichier csv
 		if filename.endswith(".csv"):
@@ -232,7 +217,6 @@ class outil_nfc:
 				if titres[j] == 'DevEui':
 					deveuis.append(line[j])
 			ndef_messages.append(settings)
-			print(settings)
 		file.close()
 
 		for setting in ndef_messages:
@@ -247,8 +231,15 @@ class outil_nfc:
 			# récupération des données du capteur
 			tag = clf.connect(rdwr={'on-connect': lambda tag: False})
 
-			# écriture de la configuration dans le capteur
-			tag.ndef.records = [record]
+			data = tag.ndef.records[0].text.split('\n')
+
+			donnees = outil_nfc.conf_to_dict(data, donnees, num_capt)
+
+			if donnees.get('DevEui') == deveuis[num_capt]:
+				# écriture de la configuration dans le capteur
+				tag.ndef.records = [record]
+			else:
+				print('Erreur: DevEui different.')
 
 			clf.close()
 			num_capt += 1
@@ -259,11 +250,6 @@ class outil_nfc:
 if __name__ == '__main__':
 	args = arg_parser()
 	if args.lecture:
-		try:
-			action = args.create
-		except:
-			action = args.update
-		finally:
-			outil_nfc.lecture(args.fichier, action, args.verbose)
+		outil_nfc.lecture(args.fichier, args.verbose)
 	elif args.ecriture:
 		outil_nfc.ecriture(args.fichier, args.verbose)
