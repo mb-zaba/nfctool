@@ -32,5 +32,5 @@ if __name__ == '__main__':
     if not isinstance(sys.argv[1], str):
         raise Exception("Missing argument")
     nfct = NFCtool(sys.argv[1])
-    print(nfct.read_nfc())
-    # print(nfct.write_nfc())
+    # print(nfct.read_nfc())
+    print(nfct.write_nfc())
