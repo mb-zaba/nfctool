@@ -10,7 +10,6 @@ class NFCtool:
 
     def read_nfc(self):
         records = self.tag
-        # data = records.text.split('\n')
         return records
 
 

@@ -48,7 +48,7 @@ def arg_parser():
 
 class outil_nfc:
     # fonction pour formatter la configuration en dictionnaire
-    def conf_to_dict(data, donnees, num_capt):
+    def conf_to_dict(self, data, donnees, num_capt):
         for i in range(0, len(data)-1):
             info = data[i].split(':')
             if info[0] not in donnees:
@@ -71,7 +71,7 @@ class outil_nfc:
 
     # fonction de lecture du capteur
 
-    def lecture(nom_fichier, verbose):
+    def lecture(self, nom_fichier, verbose):
         nouv_capt = 'o'
         num_capt = 0
         donnees = {}
@@ -197,7 +197,7 @@ class outil_nfc:
 
     # fonction d'écriture du capteur
 
-    def ecriture(filename, verbose):
+    def ecriture(self, filename, verbose):
         num_capt = 0
         ndef_messages = []
         deveuis = []
